@@ -1,0 +1,2367 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Вечерний Квест — Карта приключений</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Georgia", "Times New Roman", serif;
+        background: #2b1810;
+        color: #3d2b1f;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-image:
+          radial-gradient(
+            ellipse at 20% 50%,
+            rgba(180, 120, 60, 0.15) 0%,
+            transparent 60%
+          ),
+          radial-gradient(
+            ellipse at 80% 50%,
+            rgba(200, 150, 80, 0.12) 0%,
+            transparent 60%
+          );
+      }
+
+      .container {
+        width: 100%;
+        max-width: 1100px;
+        padding: 20px;
+      }
+
+      header {
+        text-align: center;
+        padding: 28px 20px 20px;
+        margin-bottom: 16px;
+      }
+
+      header h1 {
+        font-size: 2rem;
+        font-weight: 400;
+        letter-spacing: 2px;
+        color: #e8d5b0;
+        text-shadow:
+          0 2px 8px rgba(0, 0, 0, 0.5),
+          0 0 40px rgba(200, 150, 60, 0.2);
+      }
+
+      header h1 span {
+        display: inline-block;
+        background: linear-gradient(135deg, #f6d365, #daa520);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      header p {
+        color: #b8956a;
+        font-size: 0.95rem;
+        font-style: italic;
+        margin-top: 6px;
+        letter-spacing: 0.5px;
+      }
+
+      .map-wrapper {
+        position: relative;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow:
+          0 4px 30px rgba(0, 0, 0, 0.5),
+          0 0 0 1px rgba(218, 165, 32, 0.15),
+          0 0 60px rgba(200, 150, 60, 0.08);
+      }
+
+      #map {
+        width: 100%;
+        height: 600px;
+        background: #3d2b1f;
+      }
+
+      .legend {
+        display: flex;
+        justify-content: center;
+        gap: 28px;
+        padding: 18px 20px;
+        margin-top: 16px;
+        background: rgba(30, 18, 12, 0.75);
+        border-radius: 12px;
+        border: 1px solid rgba(218, 165, 32, 0.12);
+        backdrop-filter: blur(4px);
+        flex-wrap: wrap;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #c9a87c;
+        font-size: 0.9rem;
+      }
+
+      .legend-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        border: 2px solid;
+      }
+
+      .legend-icon.cafe {
+        background: rgba(217, 119, 6, 0.2);
+        border-color: #d97706;
+      }
+
+      .legend-icon.park {
+        background: rgba(101, 163, 13, 0.2);
+        border-color: #65a30d;
+      }
+
+      .legend-icon.monument {
+        background: rgba(180, 83, 9, 0.2);
+        border-color: #b45309;
+      }
+
+      .quest-panel {
+        margin-top: 16px;
+        background: linear-gradient(180deg, #fef7e8, #f5e6c8);
+        border-radius: 12px;
+        border: 1px solid #daa520;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        padding: 20px;
+        display: none;
+        animation: fadeSlideIn 0.5s ease-out;
+      }
+
+      .quest-panel.visible {
+        display: block;
+      }
+
+      @keyframes fadeSlideIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .quest-panel-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+
+      .quest-panel-header .scroll-icon {
+        font-size: 1.3rem;
+      }
+
+      .quest-panel-header h2 {
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: #5c3d1e;
+        letter-spacing: 0.3px;
+        line-height: 1.3;
+      }
+
+      .quest-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .quest-stat {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(218, 165, 32, 0.12);
+        border-radius: 10px;
+        padding: 12px 14px;
+        border: 1px solid rgba(218, 165, 32, 0.2);
+      }
+
+      .quest-stat-icon {
+        font-size: 1.3rem;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: rgba(218, 165, 32, 0.15);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .quest-stat-label {
+        font-size: 0.78rem;
+        color: #8b7355;
+        margin-bottom: 1px;
+      }
+
+      .quest-stat-value {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #5c3d1e;
+      }
+
+      .quest-action {
+        width: 100%;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 10px;
+        font-family: "Georgia", serif;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        background: linear-gradient(135deg, #d4a02a, #b8860b);
+        color: #fff;
+        transition: all 0.2s ease;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .quest-action:hover {
+        background: linear-gradient(135deg, #e0ad35, #c9950c);
+        box-shadow: 0 2px 12px rgba(184, 134, 11, 0.4);
+        transform: translateY(-1px);
+      }
+
+      .quest-action:active {
+        transform: translateY(0);
+      }
+
+      .quest-action.reset {
+        background: transparent;
+        color: #8b7355;
+        border: 1px solid rgba(218, 165, 32, 0.3);
+        margin-top: 8px;
+        font-size: 0.85rem;
+        padding: 8px;
+      }
+
+      .quest-action.reset:hover {
+        background: rgba(218, 165, 32, 0.08);
+        box-shadow: none;
+        transform: none;
+      }
+
+      .quest-hint {
+        text-align: center;
+        color: #8b7355;
+        font-style: italic;
+        font-size: 0.9rem;
+        margin-top: 12px;
+        padding: 10px;
+        border-top: 1px solid rgba(218, 165, 32, 0.15);
+      }
+
+      .tracking-section {
+        display: none;
+        margin-bottom: 16px;
+      }
+
+      .tracking-section.visible {
+        display: block;
+        animation: fadeSlideIn 0.4s ease-out;
+      }
+
+      .progress-track {
+        width: 100%;
+        height: 14px;
+        background: rgba(218, 165, 32, 0.15);
+        border-radius: 7px;
+        overflow: hidden;
+        margin-bottom: 12px;
+        position: relative;
+        border: 1px solid rgba(218, 165, 32, 0.2);
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #d4a02a, #f6d365);
+        border-radius: 7px;
+        transition: width 0.4s ease;
+        width: 0%;
+        position: relative;
+      }
+
+      .progress-fill::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 4px;
+        right: 4px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 4px;
+      }
+
+      .progress-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8rem;
+        color: #8b7355;
+        margin-bottom: 12px;
+      }
+
+      .progress-label span {
+        font-weight: 700;
+        color: #5c3d1e;
+      }
+
+      .quest-action.stop {
+        background: linear-gradient(135deg, #b91c1c, #991b1b);
+      }
+
+      .quest-action.stop:hover {
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+        box-shadow: 0 2px 12px rgba(185, 28, 28, 0.4);
+      }
+
+      .user-location-pulse {
+        animation: userPulse 2s infinite;
+      }
+
+      @keyframes userPulse {
+        0% {
+          opacity: 0.8;
+          r: 8;
+        }
+        50% {
+          opacity: 0.4;
+          r: 14;
+        }
+        100% {
+          opacity: 0.8;
+          r: 8;
+        }
+      }
+
+      .completed-message {
+        text-align: center;
+        padding: 16px;
+        background: rgba(218, 165, 32, 0.1);
+        border-radius: 10px;
+        border: 1px solid rgba(218, 165, 32, 0.3);
+        margin-bottom: 12px;
+      }
+
+      .completed-message .icon {
+        font-size: 2rem;
+        display: block;
+        margin-bottom: 8px;
+      }
+
+      .completed-message .title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #5c3d1e;
+        margin-bottom: 4px;
+      }
+
+      .completed-message .subtitle {
+        font-size: 0.85rem;
+        color: #8b7355;
+      }
+
+      footer {
+        text-align: center;
+        padding: 24px 20px 16px;
+        color: #6b5340;
+        font-size: 0.8rem;
+        font-style: italic;
+      }
+
+      /* --- Badge section --- */
+      .badges-section {
+        display: none;
+        animation: fadeSlideIn 0.4s ease-out;
+      }
+
+      .badges-section.visible {
+        display: block;
+      }
+
+      .badge-header {
+        text-align: center;
+        padding: 28px 20px 20px;
+      }
+
+      .badge-header h2 {
+        font-size: 1.6rem;
+        font-weight: 400;
+        letter-spacing: 2px;
+        color: #e8d5b0;
+        text-shadow:
+          0 2px 8px rgba(0, 0, 0, 0.5),
+          0 0 40px rgba(200, 150, 60, 0.2);
+        margin-bottom: 6px;
+      }
+
+      .badge-header h2 span {
+        display: inline-block;
+        background: linear-gradient(135deg, #f6d365, #daa520);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .badge-header p {
+        color: #b8956a;
+        font-size: 0.9rem;
+        font-style: italic;
+      }
+
+      .badge-summary {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(218, 165, 32, 0.15);
+        border: 1px solid rgba(218, 165, 32, 0.25);
+        border-radius: 20px;
+        padding: 8px 18px;
+        margin: 0 auto 24px;
+        color: #e8d5b0;
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
+
+      .badge-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      .badge-card {
+        background: rgba(30, 18, 12, 0.6);
+        border: 1px solid rgba(218, 165, 32, 0.12);
+        border-radius: 12px;
+        padding: 14px;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        opacity: 0.5;
+        transition: all 0.3s ease;
+      }
+
+      .badge-card.badge-awarded {
+        opacity: 1;
+        border-color: rgba(218, 165, 32, 0.35);
+        background: rgba(218, 165, 32, 0.08);
+      }
+
+      .badge-card-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: rgba(218, 165, 32, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        border: 1px solid rgba(218, 165, 32, 0.15);
+      }
+
+      .badge-card-icon.badge-awarded-icon {
+        background: rgba(218, 165, 32, 0.2);
+        border-color: rgba(218, 165, 32, 0.35);
+      }
+
+      .badge-icon-symbol {
+        font-size: 1.3rem;
+      }
+
+      .badge-card-body {
+        min-width: 0;
+      }
+
+      .badge-card-name {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #c9a87c;
+        margin-bottom: 2px;
+      }
+
+      .badge-card.badge-awarded .badge-card-name {
+        color: #e8d5b0;
+      }
+
+      .badge-check {
+        color: #daa520;
+        font-size: 0.8rem;
+      }
+
+      .badge-card-desc {
+        font-size: 0.78rem;
+        color: #8b7355;
+        line-height: 1.3;
+      }
+
+      .locate-section {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .locate-btn {
+        padding: 10px 20px;
+        border: 1px solid rgba(218, 165, 32, 0.25);
+        border-radius: 10px;
+        background: rgba(30, 18, 12, 0.6);
+        color: #c9a87c;
+        font-family: "Georgia", serif;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        backdrop-filter: blur(4px);
+      }
+
+      .locate-btn:hover {
+        background: rgba(218, 165, 32, 0.1);
+        border-color: rgba(218, 165, 32, 0.35);
+        color: #e8d5b0;
+      }
+
+      .locate-btn.locating {
+        opacity: 0.7;
+        cursor: wait;
+      }
+
+      .locate-btn.success {
+        border-color: #22c55e;
+        color: #4ade80;
+      }
+
+      .locate-btn.error {
+        border-color: #ef4444;
+        color: #f87171;
+      }
+
+      .locate-error {
+        font-size: 0.8rem;
+        color: #f87171;
+        padding: 6px 0;
+        display: none;
+      }
+
+      .locate-error.visible {
+        display: block;
+      }
+
+      .manual-toggle-btn {
+        background: none;
+        border: none;
+        color: #8b7355;
+        font-family: "Georgia", serif;
+        font-size: 0.85rem;
+        cursor: pointer;
+        padding: 6px 10px;
+        text-decoration: underline;
+        text-decoration-style: dotted;
+        text-underline-offset: 3px;
+      }
+
+      .manual-toggle-btn:hover {
+        color: #c9a87c;
+      }
+
+      .manual-input-section {
+        display: none;
+        margin-top: 8px;
+        padding: 12px;
+        background: rgba(30, 18, 12, 0.4);
+        border-radius: 10px;
+        border: 1px solid rgba(218, 165, 32, 0.12);
+      }
+
+      .manual-input-section.visible {
+        display: block;
+        animation: fadeSlideIn 0.3s ease-out;
+      }
+
+      .manual-input-fields {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .manual-input-field {
+        flex: 1;
+        min-width: 120px;
+      }
+
+      .manual-input-field label {
+        display: block;
+        font-size: 0.75rem;
+        color: #8b7355;
+        margin-bottom: 4px;
+      }
+
+      .manual-input-field input {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid rgba(218, 165, 32, 0.2);
+        border-radius: 8px;
+        background: rgba(254, 247, 232, 0.9);
+        color: #3d2b1f;
+        font-family: "Georgia", serif;
+        font-size: 0.9rem;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+
+      .manual-input-field input:focus {
+        border-color: #daa520;
+      }
+
+      .manual-input-field input::placeholder {
+        color: #b8956a;
+      }
+
+      .manual-input-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .manual-input-actions button {
+        padding: 8px 16px;
+        border: 1px solid rgba(218, 165, 32, 0.25);
+        border-radius: 8px;
+        font-family: "Georgia", serif;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .manual-apply-btn {
+        background: linear-gradient(135deg, #d4a02a, #b8860b);
+        color: #fff;
+        border-color: transparent;
+      }
+
+      .manual-apply-btn:hover {
+        background: linear-gradient(135deg, #e0ad35, #c9950c);
+      }
+
+      .manual-cancel-btn {
+        background: transparent;
+        color: #8b7355;
+      }
+
+      .manual-cancel-btn:hover {
+        background: rgba(218, 165, 32, 0.08);
+      }
+
+      /* --- New badges in completion modal --- */
+      .new-badges-section {
+        display: none;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(218, 165, 32, 0.2);
+        text-align: left;
+      }
+
+      .new-badges-section.visible {
+        display: block;
+        animation: fadeSlideIn 0.4s ease-out;
+      }
+
+      .new-badges-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #daa520;
+        margin-bottom: 8px;
+        text-align: center;
+      }
+
+      .new-badges-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .new-badges-list li {
+        padding: 6px 8px;
+        font-size: 0.82rem;
+        color: #c9a87c;
+        border-radius: 6px;
+        background: rgba(218, 165, 32, 0.08);
+        margin-bottom: 4px;
+      }
+
+      .new-badge-icon {
+        font-size: 1.1rem;
+      }
+
+      /* --- Navigation --- */
+      .nav-bar {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .nav-btn {
+        padding: 8px 20px;
+        border: 1px solid rgba(218, 165, 32, 0.2);
+        border-radius: 20px;
+        background: rgba(30, 18, 12, 0.5);
+        color: #b8956a;
+        font-family: "Georgia", serif;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        letter-spacing: 0.5px;
+      }
+
+      .nav-btn:hover {
+        background: rgba(218, 165, 32, 0.1);
+        border-color: rgba(218, 165, 32, 0.3);
+        color: #e8d5b0;
+      }
+
+      .nav-btn.active {
+        background: rgba(218, 165, 32, 0.15);
+        border-color: #daa520;
+        color: #e8d5b0;
+      }
+
+      .map-content {
+        display: block;
+      }
+
+      .map-content.hidden {
+        display: none;
+      }
+
+      @media (max-width: 640px) {
+        .badge-grid {
+          grid-template-columns: 1fr;
+        }
+
+        header h1 {
+          font-size: 1.4rem;
+        }
+
+        #map {
+          height: 420px;
+        }
+
+        .legend {
+          gap: 14px;
+          padding: 14px;
+        }
+
+        .legend-item {
+          font-size: 0.8rem;
+        }
+
+        .quest-stats {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* --- Completion overlay --- */
+      .completion-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        background: rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(4px);
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      .completion-overlay.visible {
+        display: flex;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      @keyframes scaleIn {
+        from {
+          opacity: 0;
+          transform: scale(0.92);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      .completion-modal {
+        background: linear-gradient(180deg, #fef7e8, #f5e6c8);
+        border-radius: 16px;
+        border: 2px solid #daa520;
+        box-shadow:
+          0 8px 40px rgba(0, 0, 0, 0.4),
+          0 0 60px rgba(218, 165, 32, 0.1);
+        padding: 32px 28px 24px;
+        margin: 16px;
+        max-width: 420px;
+        width: 100%;
+        animation: scaleIn 0.35s ease-out;
+        text-align: center;
+      }
+
+      .completion-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: rgba(218, 165, 32, 0.15);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin: 0 auto 16px;
+        border: 2px solid rgba(218, 165, 32, 0.25);
+      }
+
+      .completion-modal h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #5c3d1e;
+        margin-bottom: 8px;
+      }
+
+      .completion-congrats {
+        font-size: 0.9rem;
+        color: #8b7355;
+        font-style: italic;
+        line-height: 1.4;
+        margin-bottom: 20px;
+        padding: 0 8px;
+      }
+
+      .completion-quest-name {
+        background: rgba(218, 165, 32, 0.1);
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+        border: 1px solid rgba(218, 165, 32, 0.2);
+      }
+
+      .completion-quest-name-label {
+        font-size: 0.78rem;
+        color: #8b7355;
+        margin-bottom: 4px;
+      }
+
+      .completion-quest-name-value {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #5c3d1e;
+      }
+
+      .completion-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      .completion-stat {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(218, 165, 32, 0.1);
+        border-radius: 10px;
+        padding: 12px 14px;
+        border: 1px solid rgba(218, 165, 32, 0.2);
+        text-align: left;
+      }
+
+      .completion-stat-icon {
+        font-size: 1.3rem;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: rgba(218, 165, 32, 0.15);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .completion-stat-label {
+        font-size: 0.75rem;
+        color: #8b7355;
+        margin-bottom: 1px;
+      }
+
+      .completion-stat-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #5c3d1e;
+      }
+
+      .completion-btn {
+        width: 100%;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 10px;
+        font-family: "Georgia", serif;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        background: linear-gradient(135deg, #d4a02a, #b8860b);
+        color: #fff;
+        transition: all 0.2s ease;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .completion-btn:hover {
+        background: linear-gradient(135deg, #e0ad35, #c9950c);
+        box-shadow: 0 2px 12px rgba(184, 134, 11, 0.4);
+        transform: translateY(-1px);
+      }
+
+      .completion-btn:active {
+        transform: translateY(0);
+      }
+
+      @media (max-width: 640px) {
+        .completion-modal {
+          padding: 24px 16px 20px;
+        }
+        .completion-stats {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1><span>Вечерний Квест</span></h1>
+        <p>Карта сказочных приключений</p>
+        <div class="nav-bar">
+          <button class="nav-btn active" id="navMapBtn">🗺️ Карта</button>
+          <button class="nav-btn" id="navBadgesBtn">🏅 Достижения</button>
+        </div>
+      </header>
+
+      <div class="map-content" id="mapContent">
+        <div class="map-wrapper">
+          <div id="map"></div>
+        </div>
+
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-icon cafe">☕</div>
+            <span>Кафе</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-icon park">🌳</div>
+            <span>Парк</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-icon monument">🏛️</div>
+            <span>Памятник</span>
+          </div>
+        </div>
+
+        <div class="locate-section">
+          <button class="locate-btn" id="locateBtn">
+            🧭 Определить моё местоположение
+          </button>
+          <button class="manual-toggle-btn" id="manualToggleBtn">
+            Ввести координаты вручную
+          </button>
+        </div>
+        <div class="locate-error" id="locateError"></div>
+        <div class="manual-input-section" id="manualInputSection">
+          <div class="manual-input-fields">
+            <div class="manual-input-field">
+              <label for="manualLat">Широта (lat)</label>
+              <input
+                type="number"
+                id="manualLat"
+                placeholder="55.7558"
+                step="any"
+              />
+            </div>
+            <div class="manual-input-field">
+              <label for="manualLng">Долгота (lng)</label>
+              <input
+                type="number"
+                id="manualLng"
+                placeholder="37.6173"
+                step="any"
+              />
+            </div>
+          </div>
+          <div class="manual-input-actions">
+            <button class="manual-apply-btn" id="manualApplyBtn">
+              ✓ Применить
+            </button>
+            <button class="manual-cancel-btn" id="manualCancelBtn">
+              Отмена
+            </button>
+          </div>
+        </div>
+
+        <div id="questPanel" class="quest-panel">
+          <div class="quest-panel-header">
+            <span class="scroll-icon">📜</span>
+            <h2 id="questTitle">—</h2>
+          </div>
+          <div class="quest-stats">
+            <div class="quest-stat">
+              <div class="quest-stat-icon">📍</div>
+              <div>
+                <div class="quest-stat-label">Дистанция</div>
+                <div class="quest-stat-value" id="questDistance">—</div>
+              </div>
+            </div>
+            <div class="quest-stat">
+              <div class="quest-stat-icon">🚶</div>
+              <div>
+                <div class="quest-stat-label">Время пешком</div>
+                <div class="quest-stat-value" id="questTime">—</div>
+              </div>
+            </div>
+          </div>
+          <div class="tracking-section" id="trackingSection">
+            <div class="progress-track">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-label">
+              <span>Прогресс</span>
+              <span id="progressPercent">0%</span>
+            </div>
+            <div class="quest-stats">
+              <div class="quest-stat">
+                <div class="quest-stat-icon">👣</div>
+                <div>
+                  <div class="quest-stat-label">Пройдено</div>
+                  <div class="quest-stat-value" id="travelledDistance">—</div>
+                </div>
+              </div>
+              <div class="quest-stat">
+                <div class="quest-stat-icon">🎯</div>
+                <div>
+                  <div class="quest-stat-label">Осталось до цели</div>
+                  <div class="quest-stat-value" id="remainingDistance">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="quest-action" id="startQuestBtn">Начать путь</button>
+          <button
+            class="quest-action stop"
+            id="stopQuestBtn"
+            style="display: none"
+          >
+            ⏹ Остановить
+          </button>
+          <button class="quest-action reset" id="resetQuestBtn">
+            Выбрать другую цель
+          </button>
+          <div class="quest-hint">
+            <span id="questHint"
+              >Цель выбрана. Отправляйтесь в путь, странник!</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- Completion overlay -->
+      <div class="completion-overlay" id="completionOverlay">
+        <div class="completion-modal">
+          <div class="completion-icon">🏆</div>
+          <h2>Квест завершён!</h2>
+          <p class="completion-congrats" id="completionCongrats"></p>
+          <div class="completion-quest-name">
+            <div class="completion-quest-name-label">Название квеста</div>
+            <div class="completion-quest-name-value" id="completionQuestName">
+              —
+            </div>
+          </div>
+          <div class="completion-stats">
+            <div class="completion-stat">
+              <div class="completion-stat-icon">👣</div>
+              <div>
+                <div class="completion-stat-label">Дистанция</div>
+                <div class="completion-stat-value" id="completionDistance">
+                  —
+                </div>
+              </div>
+            </div>
+            <div class="completion-stat">
+              <div class="completion-stat-icon">⏱️</div>
+              <div>
+                <div class="completion-stat-label">Время</div>
+                <div class="completion-stat-value" id="completionTime">—</div>
+              </div>
+            </div>
+          </div>
+          <div class="new-badges-section" id="newBadgesSection">
+            <div class="new-badges-title">🏅 Новые достижения</div>
+            <ul class="new-badges-list" id="newBadgesList"></ul>
+          </div>
+          <button class="completion-btn" id="completionNewQuestBtn">
+            🗺️ Новое приключение
+          </button>
+        </div>
+      </div>
+
+      <!-- Badges section -->
+      <div class="badges-section" id="badgesSection">
+        <div class="badge-header">
+          <h2><span>Достижения</span></h2>
+          <p>Ваши бейджи за прогулки и приключения</p>
+        </div>
+        <div class="badge-summary" id="badgeCount">0 из 9 бейджей получено</div>
+        <div class="badge-grid" id="badgesGrid"></div>
+      </div>
+
+      <footer>Избери свою цель и отправляйся в путь, странник</footer>
+    </div>
+
+    <script>
+      (function () {
+        const landmarks = [
+          {
+            id: "cafe-1",
+            name: "Кофейня «Уют»",
+            description: "Уютное место с тёплым чаем и домашней выпечкой",
+            coords: [55.758, 37.612],
+            category: "cafe",
+            icon: "☕",
+            color: "#d97706",
+          },
+          {
+            id: "cafe-2",
+            name: "Чайная «Самовар»",
+            description: "Традиционная русская чайная с видом на Кремль",
+            coords: [55.752, 37.625],
+            category: "cafe",
+            icon: "☕",
+            color: "#d97706",
+          },
+          {
+            id: "park-1",
+            name: "Парк Горького",
+            description: "Центральный парк с аллеями и набережной",
+            coords: [55.7289, 37.6036],
+            category: "park",
+            icon: "🌳",
+            color: "#65a30d",
+          },
+          {
+            id: "park-2",
+            name: "Александровский сад",
+            description: "Тихий сад у стен Кремля с фонтанами",
+            coords: [55.7525, 37.614],
+            category: "park",
+            icon: "🌳",
+            color: "#65a30d",
+          },
+          {
+            id: "monument-1",
+            name: "Памятник Пушкину",
+            description: "Знаменитый памятник на Тверском бульваре",
+            coords: [55.7651, 37.6051],
+            category: "monument",
+            icon: "🏛️",
+            color: "#b45309",
+          },
+        ];
+
+        const mapCenter = [55.7558, 37.6173];
+
+        const questPrefixes = [
+          "Доставить кольцо",
+          "Найти реликвию",
+          "Спасти принцессу",
+          "Отыскать артефакт",
+          "Пробудить древнего",
+          "Защитить караван",
+          "Разгадать руны",
+          "Вернуть амулет",
+          "Провести обряд",
+          "Отнести свиток",
+          "Найти убежище",
+          "Закрыть портал",
+        ];
+
+        const questSuffixes = [
+          "в Одинокую Башню",
+          "в Забытый Храм",
+          "в Тёмный Лес",
+          "в Пещеру Дракона",
+          "к Озеру Туманов",
+          "на Перевал Ветров",
+          "в Старую Крепость",
+          "к Замку Теней",
+          "в Глубины Земли",
+          "к Подвесному Мосту",
+          "на Поляну Фей",
+          "к Камню Судеб",
+        ];
+
+        const congratulations = [
+          "Ты справился, путник! Легенда о тебе будет жить в веках.",
+          "Свершилось! Ещё одна история вписана в свитки судеб.",
+          "Поздравляем, герой! Твоё имя вписано в скрижали странников.",
+          "Цель достигнута! Пусть звёзды освещают твой дальнейший путь.",
+          "Ещё одно приключение позади. Отдохни у костра, герой.",
+          "Ты прошёл этот путь. Ни один дракон не посмеет встать у тебя на пути.",
+          "Слава тебе, странник! В тавернах будут петь баллады о твоём походе.",
+          "Квест выполнен! Твоя карта пополнилась новой легендой.",
+        ];
+
+        function generateQuestName() {
+          var prefix =
+            questPrefixes[Math.floor(Math.random() * questPrefixes.length)];
+          var suffix =
+            questSuffixes[Math.floor(Math.random() * questSuffixes.length)];
+          return prefix + " " + suffix;
+        }
+
+        function calculateDistance(from, to) {
+          var R = 6371;
+          var dLat = ((to[0] - from[0]) * Math.PI) / 180;
+          var dLon = ((to[1] - from[1]) * Math.PI) / 180;
+          var a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos((from[0] * Math.PI) / 180) *
+              Math.cos((to[0] * Math.PI) / 180) *
+              Math.sin(dLon / 2) *
+              Math.sin(dLon / 2);
+          var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          return R * c;
+        }
+
+        function estimateTimeMinutes(distanceKm) {
+          var walkingSpeedKmh = 5;
+          return Math.max(1, Math.round((distanceKm / walkingSpeedKmh) * 60));
+        }
+
+        function formatDistance(km) {
+          if (km < 1) {
+            return Math.round(km * 1000) + " м";
+          }
+          return km.toFixed(1) + " км";
+        }
+
+        function formatTime(minutes) {
+          if (minutes < 60) {
+            return minutes + " мин";
+          }
+          var h = Math.floor(minutes / 60);
+          var m = minutes % 60;
+          return h + " ч " + m + " мин";
+        }
+
+        function formatElapsedTime(seconds) {
+          var m = Math.floor(seconds / 60);
+          var s = seconds % 60;
+          if (m > 0) {
+            return m + " мин " + s + " сек";
+          }
+          return s + " сек";
+        }
+
+        // --- Badge definitions ---
+        var BADGE_DEFINITIONS = [
+          {
+            id: "first_quest",
+            name: "Первый шаг",
+            icon: "👣",
+            description: "Завершите свой первый квест",
+            check: function (quests) {
+              return quests.length >= 1;
+            },
+          },
+          {
+            id: "explorer_5",
+            name: "Исследователь",
+            icon: "🧭",
+            description: "Завершите 5 квестов",
+            check: function (quests) {
+              return quests.length >= 5;
+            },
+          },
+          {
+            id: "pathfinder_10",
+            name: "Следопыт",
+            icon: "🗺️",
+            description: "Завершите 10 квестов",
+            check: function (quests) {
+              return quests.length >= 10;
+            },
+          },
+          {
+            id: "marathon",
+            name: "Марафонец",
+            icon: "🏆",
+            description: "Пройдите 5 км за один квест",
+            check: function (quests) {
+              return quests.some(function (q) {
+                return q.distanceKm >= 5;
+              });
+            },
+          },
+          {
+            id: "traveler",
+            name: "Путешественник",
+            icon: "🌍",
+            description: "Пройдите в сумме 10 км",
+            check: function (quests) {
+              var total = 0;
+              for (var i = 0; i < quests.length; i++) {
+                total += quests[i].distanceKm;
+              }
+              return total >= 10;
+            },
+          },
+          {
+            id: "speedster",
+            name: "Скороход",
+            icon: "⚡",
+            description: "Завершите квест быстрее 10 минут",
+            check: function (quests) {
+              return quests.some(function (q) {
+                return q.elapsedSeconds < 600;
+              });
+            },
+          },
+          {
+            id: "streak_3",
+            name: "Три дня подряд",
+            icon: "📅",
+            description: "Гуляйте 3 дня подряд",
+            check: function (quests) {
+              return maxStreak(quests) >= 3;
+            },
+          },
+          {
+            id: "streak_7",
+            name: "Неделя приключений",
+            icon: "⭐",
+            description: "Гуляйте 7 дней подряд",
+            check: function (quests) {
+              return maxStreak(quests) >= 7;
+            },
+          },
+          {
+            id: "night_owl",
+            name: "Ночная сова",
+            icon: "🌙",
+            description: "Завершите квест после заката (после 20:00)",
+            check: function (quests) {
+              return quests.some(function (q) {
+                var hour = new Date(q.completedAt).getUTCHours();
+                return hour >= 17;
+              });
+            },
+          },
+        ];
+
+        function maxStreak(quests) {
+          if (quests.length === 0) return 0;
+          var uniqueDays = {};
+          for (var i = 0; i < quests.length; i++) {
+            var day = quests[i].completedAt.split("T")[0];
+            uniqueDays[day] = true;
+          }
+          var days = Object.keys(uniqueDays).sort();
+          var maxLen = 1;
+          var cur = 1;
+          for (var i = 1; i < days.length; i++) {
+            var prev = new Date(days[i - 1] + "T00:00:00Z");
+            var curr = new Date(days[i] + "T00:00:00Z");
+            var diff =
+              (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
+            if (diff === 1) {
+              cur++;
+              if (cur > maxLen) maxLen = cur;
+            } else {
+              cur = 1;
+            }
+          }
+          return maxLen;
+        }
+
+        function computeBadges(quests) {
+          var results = [];
+          for (var i = 0; i < BADGE_DEFINITIONS.length; i++) {
+            var b = BADGE_DEFINITIONS[i];
+            results.push({
+              id: b.id,
+              name: b.name,
+              icon: b.icon,
+              description: b.description,
+              awarded: b.check(quests),
+            });
+          }
+          return results;
+        }
+
+        var BADGE_STORAGE_KEY = "evening-quest-badges";
+
+        function getAwardedBadgeIds() {
+          try {
+            var stored = localStorage.getItem(BADGE_STORAGE_KEY);
+            if (stored) return JSON.parse(stored);
+          } catch (e) {}
+          return [];
+        }
+
+        function saveAwardedBadgeIds(ids) {
+          try {
+            localStorage.setItem(BADGE_STORAGE_KEY, JSON.stringify(ids));
+          } catch (e) {}
+        }
+
+        function findNewBadges(quests) {
+          var badges = computeBadges(quests);
+          var previouslyAwarded = getAwardedBadgeIds();
+          var newBadges = [];
+          for (var i = 0; i < badges.length; i++) {
+            if (
+              badges[i].awarded &&
+              previouslyAwarded.indexOf(badges[i].id) === -1
+            ) {
+              newBadges.push(badges[i]);
+            }
+          }
+          // Persist all currently awarded badges
+          var allAwarded = [];
+          for (var i = 0; i < badges.length; i++) {
+            if (badges[i].awarded) allAwarded.push(badges[i].id);
+          }
+          saveAwardedBadgeIds(allAwarded);
+          return newBadges;
+        }
+
+        function renderBadges() {
+          var quests = getQuestHistory();
+          var badges = computeBadges(quests);
+          var container = document.getElementById("badgesGrid");
+          var countEl = document.getElementById("badgeCount");
+          if (!container) return;
+
+          var awardedCount = 0;
+          var html = "";
+          for (var i = 0; i < badges.length; i++) {
+            var b = badges[i];
+            if (b.awarded) awardedCount++;
+            html +=
+              '<div class="badge-card' +
+              (b.awarded ? " badge-awarded" : "") +
+              '">' +
+              '<div class="badge-card-icon' +
+              (b.awarded ? " badge-awarded-icon" : "") +
+              '">' +
+              '<span class="badge-icon-symbol">' +
+              b.icon +
+              "</span>" +
+              "</div>" +
+              '<div class="badge-card-body">' +
+              '<div class="badge-card-name">' +
+              "<span>" +
+              b.name +
+              "</span>" +
+              (b.awarded ? '<span class="badge-check">✓</span>' : "") +
+              "</div>" +
+              '<div class="badge-card-desc">' +
+              b.description +
+              "</div>" +
+              "</div>" +
+              "</div>";
+          }
+          container.innerHTML = html;
+          if (countEl)
+            countEl.textContent =
+              awardedCount + " из " + badges.length + " бейджей получено";
+        }
+
+        function getQuestHistory() {
+          try {
+            var stored = localStorage.getItem("questHistory");
+            if (stored) return JSON.parse(stored);
+          } catch (e) {}
+          return [];
+        }
+
+        function saveQuestToLocalStorage(data) {
+          var history = getQuestHistory();
+          history.push(data);
+          try {
+            localStorage.setItem("questHistory", JSON.stringify(history));
+          } catch (e) {}
+
+          // Check for new badges
+          var newBadges = findNewBadges(history);
+          if (newBadges.length > 0) {
+            var badgeNames = [];
+            for (var i = 0; i < newBadges.length; i++) {
+              badgeNames.push(newBadges[i].name);
+            }
+            var badgeSection = document.getElementById("newBadgesSection");
+            var badgeList = document.getElementById("newBadgesList");
+            if (badgeSection && badgeList) {
+              badgeList.innerHTML = "";
+              for (var i = 0; i < newBadges.length; i++) {
+                var li = document.createElement("li");
+                li.innerHTML =
+                  '<span class="new-badge-icon">' +
+                  newBadges[i].icon +
+                  "</span> " +
+                  newBadges[i].name +
+                  " — " +
+                  newBadges[i].description;
+                badgeList.appendChild(li);
+              }
+              badgeSection.classList.add("visible");
+            }
+          }
+        }
+
+        var map = L.map("map", {
+          center: mapCenter,
+          zoom: 13,
+          zoomControl: true,
+          scrollWheelZoom: true,
+          fadeAnimation: true,
+          zoomAnimation: true,
+        });
+
+        L.tileLayer(
+          "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+          {
+            attribution:
+              '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+            subdomains: "abcd",
+            maxZoom: 19,
+            minZoom: 10,
+          }
+        ).addTo(map);
+
+        // --- State ---
+        var selectedLandmarkId = null;
+        var customMarkerLayer = null;
+        var currentTargetLabel = null;
+        var currentTargetCoords = null;
+        var markerInstances = {};
+        var selectedOverlay = null;
+
+        // --- Tracking state ---
+        var isTracking = false;
+        var watchId = null;
+        var userMarker = null;
+        var userMarkerPulse = null;
+        var routeLine = null;
+        var travelledPath = [];
+        var travelledDistance = 0;
+        var lastPosition = null;
+        var questTotalDistance = 0;
+        var questStartTime = null;
+
+        // --- User location state ---
+        var userStartPosition = mapCenter;
+        var persistentUserMarker = null;
+        var persistentUserMarkerPulse = null;
+        var isLocating = false;
+        var locateHasResult = false;
+
+        // --- DOM refs ---
+        var questPanel = document.getElementById("questPanel");
+        var questTitle = document.getElementById("questTitle");
+        var questDistance = document.getElementById("questDistance");
+        var questTime = document.getElementById("questTime");
+        var questHint = document.getElementById("questHint");
+        var startQuestBtn = document.getElementById("startQuestBtn");
+        var stopQuestBtn = document.getElementById("stopQuestBtn");
+        var resetQuestBtn = document.getElementById("resetQuestBtn");
+
+        // --- Tracking DOM refs ---
+        var trackingSection = document.getElementById("trackingSection");
+        var progressFill = document.getElementById("progressFill");
+        var progressPercent = document.getElementById("progressPercent");
+        var travelledDistanceEl = document.getElementById("travelledDistance");
+        var remainingDistanceEl = document.getElementById("remainingDistance");
+
+        // --- Locate DOM refs ---
+        var locateBtn = document.getElementById("locateBtn");
+        var locateError = document.getElementById("locateError");
+        var manualToggleBtn = document.getElementById("manualToggleBtn");
+        var manualInputSection = document.getElementById("manualInputSection");
+        var manualLat = document.getElementById("manualLat");
+        var manualLng = document.getElementById("manualLng");
+        var manualApplyBtn = document.getElementById("manualApplyBtn");
+        var manualCancelBtn = document.getElementById("manualCancelBtn");
+
+        // --- Completion DOM refs ---
+        var completionOverlay = document.getElementById("completionOverlay");
+        var completionCongrats = document.getElementById("completionCongrats");
+        var completionQuestName = document.getElementById(
+          "completionQuestName"
+        );
+        var completionDistance = document.getElementById("completionDistance");
+        var completionTime = document.getElementById("completionTime");
+        var completionNewQuestBtn = document.getElementById(
+          "completionNewQuestBtn"
+        );
+
+        // --- Navigation DOM refs ---
+        var navMapBtn = document.getElementById("navMapBtn");
+        var navBadgesBtn = document.getElementById("navBadgesBtn");
+        var mapContent = document.getElementById("mapContent");
+        var badgesSection = document.getElementById("badgesSection");
+
+        function createMarkerIcon(color, isSelected) {
+          var shadowId = "shadow-" + color.replace("#", "");
+          var fillColor = isSelected ? "#ffd700" : color;
+          var strokeColor = isSelected ? "#fff" : "#fff";
+          return L.divIcon({
+            className: "",
+            html:
+              '<svg width="36" height="44" viewBox="0 0 36 44" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+              '<defs><filter id="' +
+              shadowId +
+              '" x="-20%" y="-20%" width="140%" height="140%">' +
+              '<feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.35"/>' +
+              "</filter></defs>" +
+              '<path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 26 18 26s18-12.5 18-26C36 8.06 27.94 0 18 0z" fill="' +
+              fillColor +
+              '" filter="url(#' +
+              shadowId +
+              ')" stroke="' +
+              strokeColor +
+              '" stroke-width="1.5"/>' +
+              '<circle cx="18" cy="18" r="7" fill="#fff" opacity="0.9"/>' +
+              "</svg>",
+            iconSize: [36, 44],
+            iconAnchor: [18, 42],
+            popupAnchor: [0, -44],
+          });
+        }
+
+        function selectTarget(coords, label) {
+          // Clear previous selection glow
+          if (selectedOverlay) {
+            map.removeLayer(selectedOverlay);
+            selectedOverlay = null;
+          }
+
+          // Remove custom marker if exists
+          if (customMarkerLayer) {
+            map.removeLayer(customMarkerLayer);
+            customMarkerLayer = null;
+          }
+
+          // Add a golden glow circle around the target
+          selectedOverlay = L.circleMarker(coords, {
+            radius: 14,
+            color: "#ffd700",
+            fillColor: "#ffd700",
+            fillOpacity: 0.3,
+            weight: 3,
+            opacity: 0.8,
+            className: "target-glow",
+          }).addTo(map);
+
+          // Update landmark markers — reset all then highlight selected
+          landmarks.forEach(function (lm) {
+            var key = lm.id;
+            var marker = markerInstances[key];
+            if (marker) {
+              var isTarget = lm.id === selectedLandmarkId;
+              marker.setIcon(createMarkerIcon(lm.color, isTarget));
+            }
+          });
+
+          // Calculate distance from user start position (or map center as fallback)
+          var distKm = calculateDistance(userStartPosition, coords);
+          var timeMin = estimateTimeMinutes(distKm);
+          var questName = generateQuestName();
+
+          // Show panel
+          questTitle.textContent = questName;
+          questDistance.textContent = formatDistance(distKm);
+          questTime.textContent = formatTime(timeMin);
+          currentTargetLabel = label;
+          currentTargetCoords = coords;
+          questPanel.classList.add("visible");
+          questHint.textContent =
+            "Цель выбрана: " + label + ". Отправляйтесь в путь, странник!";
+        }
+
+        function clearSelection() {
+          // Stop tracking if active
+          if (isTracking) {
+            stopTrackingInternal();
+          }
+
+          selectedLandmarkId = null;
+          currentTargetCoords = null;
+
+          if (selectedOverlay) {
+            map.removeLayer(selectedOverlay);
+            selectedOverlay = null;
+          }
+          if (customMarkerLayer) {
+            map.removeLayer(customMarkerLayer);
+            customMarkerLayer = null;
+          }
+
+          // Reset landmark markers
+          landmarks.forEach(function (lm) {
+            var key = lm.id;
+            var marker = markerInstances[key];
+            if (marker) {
+              marker.setIcon(createMarkerIcon(lm.color, false));
+            }
+          });
+
+          questPanel.classList.remove("visible");
+          currentTargetLabel = null;
+        }
+
+        // --- Place landmarks ---
+        landmarks.forEach(function (lm) {
+          var marker = L.marker(lm.coords, {
+            icon: createMarkerIcon(lm.color, false),
+            riseOnHover: true,
+          }).addTo(map);
+
+          markerInstances[lm.id] = marker;
+
+          marker.bindPopup(
+            '<b style="font-size:1.05rem;color:#3d2b1f;">' +
+              lm.icon +
+              " " +
+              lm.name +
+              '</b><br><span style="color:#7a5e3e;font-size:0.9rem;">' +
+              lm.description +
+              "</span>",
+            {
+              closeButton: true,
+              className: "custom-popup",
+            }
+          );
+
+          marker.on("click", function () {
+            if (isTracking) return;
+            selectedLandmarkId = lm.id;
+            selectTarget(lm.coords, lm.name);
+          });
+        });
+
+        // --- Map click for custom marker ---
+        map.on("click", function (e) {
+          if (isTracking) return;
+          // Ignore clicks on landmarks (they handle their own click)
+          // But for any other click — place a custom marker
+          selectedLandmarkId = null;
+
+          var coords = [e.latlng.lat, e.latlng.lng];
+
+          // Remove old custom marker
+          if (customMarkerLayer) {
+            map.removeLayer(customMarkerLayer);
+          }
+
+          // Create custom marker (gold color for "custom" target)
+          customMarkerLayer = L.marker(coords, {
+            icon: createMarkerIcon("#daa520", true),
+            riseOnHover: true,
+            zIndexOffset: 1000,
+          }).addTo(map);
+
+          customMarkerLayer.bindPopup(
+            '<b style="font-size:1.05rem;color:#3d2b1f;">🏷️ Произвольная метка</b><br><span style="color:#7a5e3e;font-size:0.9rem;">' +
+              coords[0].toFixed(4) +
+              ", " +
+              coords[1].toFixed(4) +
+              "</span>",
+            { closeButton: true, className: "custom-popup" }
+          );
+
+          selectTarget(coords, "произвольная метка");
+        });
+
+        // --- Buttons ---
+        startQuestBtn.addEventListener("click", function () {
+          if (currentTargetCoords) {
+            startTracking();
+          }
+        });
+
+        stopQuestBtn.addEventListener("click", function () {
+          stopTrackingInternal();
+          questHint.textContent = "Квест остановлен. Выберите новую цель.";
+        });
+
+        resetQuestBtn.addEventListener("click", function () {
+          clearSelection();
+        });
+
+        completionNewQuestBtn.addEventListener("click", function () {
+          completionOverlay.classList.remove("visible");
+          document
+            .getElementById("newBadgesSection")
+            .classList.remove("visible");
+          clearSelection();
+        });
+
+        // --- Navigation ---
+        var navMapBtn = document.getElementById("navMapBtn");
+        var navBadgesBtn = document.getElementById("navBadgesBtn");
+        var mapContent = document.getElementById("mapContent");
+        var badgesSection = document.getElementById("badgesSection");
+
+        function showMapView() {
+          mapContent.classList.remove("hidden");
+          badgesSection.classList.remove("visible");
+          navMapBtn.classList.add("active");
+          navBadgesBtn.classList.remove("active");
+          setTimeout(function () {
+            map.invalidateSize();
+          }, 200);
+        }
+
+        function showBadgesView() {
+          mapContent.classList.add("hidden");
+          badgesSection.classList.add("visible");
+          navMapBtn.classList.remove("active");
+          navBadgesBtn.classList.add("active");
+          renderBadges();
+        }
+
+        navMapBtn.addEventListener("click", showMapView);
+        navBadgesBtn.addEventListener("click", showBadgesView);
+
+        // --- GPS Tracking ---
+        function startTracking() {
+          if (!currentTargetCoords) return;
+
+          if (typeof navigator.geolocation === "undefined") {
+            questHint.textContent = "GPS не поддерживается вашим браузером.";
+            return;
+          }
+
+          isTracking = true;
+          startQuestBtn.style.display = "none";
+          stopQuestBtn.style.display = "";
+          trackingSection.classList.add("visible");
+          questHint.textContent = "Определяю ваше местоположение...";
+
+          watchId = navigator.geolocation.watchPosition(
+            onPositionUpdate,
+            function (err) {
+              questHint.textContent =
+                "Ошибка GPS (" +
+                err.code +
+                "): " +
+                (err.code === 1
+                  ? "доступ запрещён"
+                  : err.code === 2
+                    ? "сигнал недоступен"
+                    : "тайм-аут");
+              stopTrackingInternal();
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 5000,
+            }
+          );
+        }
+
+        function onPositionUpdate(position) {
+          var lat = position.coords.latitude;
+          var lng = position.coords.longitude;
+          var currentPos = [lat, lng];
+
+          if (!userMarker) {
+            // First fix — initialise tracking
+            lastPosition = currentPos;
+            travelledPath = [currentPos];
+            travelledDistance = 0;
+            questTotalDistance = calculateDistance(
+              currentPos,
+              currentTargetCoords
+            );
+            questStartTime = Date.now();
+
+            // Create user location marker
+            userMarker = L.circleMarker(currentPos, {
+              radius: 8,
+              color: "#2563eb",
+              fillColor: "#3b82f6",
+              fillOpacity: 0.9,
+              weight: 3,
+              className: "user-location-pulse",
+            }).addTo(map);
+
+            // Add outer pulse ring
+            userMarkerPulse = L.circleMarker(currentPos, {
+              radius: 14,
+              color: "#3b82f6",
+              fillColor: "#3b82f6",
+              fillOpacity: 0.15,
+              weight: 2,
+              className: "user-location-pulse",
+            }).addTo(map);
+
+            // Create route polyline
+            routeLine = L.polyline(travelledPath, {
+              color: "#d4a02a",
+              weight: 4,
+              opacity: 0.7,
+              dashArray: "8, 6",
+            }).addTo(map);
+
+            questHint.textContent =
+              "Квест начат! Следуйте к цели: " + currentTargetLabel + ".";
+
+            updateTrackingDisplay(currentPos);
+          } else {
+            // Subsequent fix — accumulate distance
+            var segmentKm = calculateDistance(lastPosition, currentPos);
+            if (segmentKm > 0.003) {
+              // Filter GPS noise (< 3 m)
+              travelledDistance += segmentKm;
+              travelledPath.push(currentPos);
+              lastPosition = currentPos;
+
+              routeLine.setLatLngs(travelledPath);
+              userMarker.setLatLng(currentPos);
+              userMarkerPulse.setLatLng(currentPos);
+
+              updateTrackingDisplay(currentPos);
+
+              // Auto-completion check
+              var distToTargetKm = calculateDistance(
+                currentPos,
+                currentTargetCoords
+              );
+              var distToTargetM = distToTargetKm * 1000;
+              if (distToTargetM <= 50) {
+                completeQuest();
+              }
+            }
+          }
+        }
+
+        function updateTrackingDisplay(currentPos) {
+          var distToTargetKm = calculateDistance(
+            currentPos,
+            currentTargetCoords
+          );
+          var distToTargetM = distToTargetKm * 1000;
+          var progress = Math.min(
+            100,
+            (travelledDistance / Math.max(questTotalDistance, 0.001)) * 100
+          );
+
+          progressFill.style.width = progress + "%";
+          progressPercent.textContent = Math.round(progress) + "%";
+
+          travelledDistanceEl.textContent = formatDistance(travelledDistance);
+          remainingDistanceEl.textContent =
+            distToTargetM < 1000
+              ? Math.round(distToTargetM) + " м"
+              : distToTargetKm.toFixed(1) + " км";
+        }
+
+        function stopTrackingInternal() {
+          if (watchId !== null && watchId !== undefined) {
+            navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+          }
+
+          isTracking = false;
+          startQuestBtn.style.display = "";
+          stopQuestBtn.style.display = "none";
+          trackingSection.classList.remove("visible");
+
+          // Reset tracking visuals
+          if (userMarker) {
+            map.removeLayer(userMarker);
+            userMarker = null;
+          }
+          if (userMarkerPulse) {
+            map.removeLayer(userMarkerPulse);
+            userMarkerPulse = null;
+          }
+          if (routeLine) {
+            map.removeLayer(routeLine);
+            routeLine = null;
+          }
+
+          travelledPath = [];
+          travelledDistance = 0;
+          lastPosition = null;
+          questTotalDistance = 0;
+          questStartTime = null;
+        }
+
+        function completeQuest() {
+          if (watchId !== null && watchId !== undefined) {
+            navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+          }
+
+          isTracking = false;
+          startQuestBtn.style.display = "";
+          stopQuestBtn.style.display = "none";
+          trackingSection.classList.remove("visible");
+
+          var elapsedSeconds = questStartTime
+            ? Math.floor((Date.now() - questStartTime) / 1000)
+            : 0;
+
+          var actualDistance = travelledDistance || questTotalDistance;
+
+          var congratulation =
+            congratulations[Math.floor(Math.random() * congratulations.length)];
+
+          // Show completion modal
+          completionCongrats.textContent = congratulation;
+          completionQuestName.textContent = questTitle.textContent;
+          completionDistance.textContent = formatDistance(actualDistance);
+          completionTime.textContent = formatElapsedTime(elapsedSeconds);
+          completionOverlay.classList.add("visible");
+
+          // Save to localStorage
+          var questData = {
+            id: Date.now().toString(),
+            questName: questTitle.textContent,
+            distanceKm: actualDistance,
+            elapsedSeconds: elapsedSeconds,
+            date: new Date().toISOString().split("T")[0],
+            completedAt: new Date().toISOString(),
+            targetCoords: currentTargetCoords,
+            targetLabel: currentTargetLabel,
+            route: travelledPath.length > 0 ? travelledPath : null,
+          };
+          saveQuestToLocalStorage(questData);
+
+          // Remove user pulse ring, keep marker
+          if (userMarkerPulse) {
+            map.removeLayer(userMarkerPulse);
+            userMarkerPulse = null;
+          }
+          if (userMarker) {
+            userMarker.setStyle({
+              color: "#d4a02a",
+              fillColor: "#f6d365",
+            });
+          }
+          if (routeLine) {
+            routeLine.setStyle({
+              dashArray: null,
+              color: "#d4a02a",
+              opacity: 0.9,
+            });
+          }
+
+          travelledPath = [];
+          travelledDistance = 0;
+          lastPosition = null;
+          questTotalDistance = 0;
+          questStartTime = null;
+        }
+
+        function showPersistentUserMarker(lat, lng) {
+          // Remove existing marker if any
+          hidePersistentUserMarker();
+
+          persistentUserMarker = L.circleMarker([lat, lng], {
+            radius: 8,
+            color: "#2563eb",
+            fillColor: "#3b82f6",
+            fillOpacity: 0.9,
+            weight: 3,
+            className: "user-location-pulse",
+          }).addTo(map);
+
+          persistentUserMarkerPulse = L.circleMarker([lat, lng], {
+            radius: 14,
+            color: "#3b82f6",
+            fillColor: "#3b82f6",
+            fillOpacity: 0.15,
+            weight: 2,
+            className: "user-location-pulse",
+          }).addTo(map);
+        }
+
+        function hidePersistentUserMarker() {
+          if (persistentUserMarker) {
+            map.removeLayer(persistentUserMarker);
+            persistentUserMarker = null;
+          }
+          if (persistentUserMarkerPulse) {
+            map.removeLayer(persistentUserMarkerPulse);
+            persistentUserMarkerPulse = null;
+          }
+        }
+
+        function getGeolocationErrorMessage(code) {
+          if (code === undefined || code === null) {
+            return "Геолокация не поддерживается вашим браузером. Введите координаты вручную.";
+          }
+          switch (code) {
+            case 1:
+              return "Доступ к геолокации запрещён. Разрешите доступ в настройках браузера или введите координаты вручную.";
+            case 2:
+              return "Не удалось определить местоположение. GPS-сигнал недоступен. Попробуйте выйти на открытое пространство или введите координаты вручную.";
+            case 3:
+              return "Время ожидания геолокации истекло. Попробуйте ещё раз или введите координаты вручную.";
+            default:
+              return "Ошибка геолокации. Введите координаты вручную.";
+          }
+        }
+
+        function locateUser() {
+          if (isLocating) return;
+
+          locateError.classList.remove("visible");
+
+          if (typeof navigator.geolocation === "undefined") {
+            locateBtn.textContent = "⚠️ Геолокация недоступна";
+            locateBtn.className = "locate-btn error";
+            locateError.textContent = getGeolocationErrorMessage();
+            locateError.classList.add("visible");
+            return;
+          }
+
+          isLocating = true;
+          locateBtn.textContent = "⏳ Определяю...";
+          locateBtn.className = "locate-btn locating";
+
+          navigator.geolocation.getCurrentPosition(
+            function (position) {
+              var lat = position.coords.latitude;
+              var lng = position.coords.longitude;
+
+              userStartPosition = [lat, lng];
+              locateHasResult = true;
+              isLocating = false;
+
+              locateBtn.textContent = "✓ Местоположение определено";
+              locateBtn.className = "locate-btn success";
+              locateError.classList.remove("visible");
+
+              // Center map on user position
+              map.setView([lat, lng], map.getZoom());
+
+              // Show user marker
+              showPersistentUserMarker(lat, lng);
+
+              // Recalculate distance if a target is already selected
+              if (currentTargetCoords) {
+                var newDistKm = calculateDistance(
+                  userStartPosition,
+                  currentTargetCoords
+                );
+                var newTimeMin = estimateTimeMinutes(newDistKm);
+                questDistance.textContent = formatDistance(newDistKm);
+                questTime.textContent = formatTime(newTimeMin);
+              }
+            },
+            function (err) {
+              isLocating = false;
+              locateBtn.textContent = "⚠️ Ошибка определения";
+              locateBtn.className = "locate-btn error";
+
+              var message = getGeolocationErrorMessage(err.code);
+              locateError.textContent = message;
+              locateError.classList.add("visible");
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 5000,
+            }
+          );
+        }
+
+        function applyManualCoords() {
+          var latStr = manualLat.value.trim();
+          var lngStr = manualLng.value.trim();
+
+          if (!latStr || !lngStr) {
+            locateError.textContent = "Введите оба значения: широту и долготу.";
+            locateError.classList.add("visible");
+            return;
+          }
+
+          var lat = parseFloat(latStr);
+          var lng = parseFloat(lngStr);
+
+          if (isNaN(lat) || isNaN(lng)) {
+            locateError.textContent =
+              "Некорректные координаты. Используйте числа (например, 55.7558 для широты).";
+            locateError.classList.add("visible");
+            return;
+          }
+
+          if (lat < -90 || lat > 90) {
+            locateError.textContent =
+              "Широта должна быть в диапазоне от -90 до 90.";
+            locateError.classList.add("visible");
+            return;
+          }
+
+          if (lng < -180 || lng > 180) {
+            locateError.textContent =
+              "Долгота должна быть в диапазоне от -180 до 180.";
+            locateError.classList.add("visible");
+            return;
+          }
+
+          locateError.classList.remove("visible");
+          userStartPosition = [lat, lng];
+          locateHasResult = true;
+
+          locateBtn.textContent = "✓ Координаты введены вручную";
+          locateBtn.className = "locate-btn success";
+
+          // Center map on entered coordinates
+          map.setView([lat, lng], map.getZoom());
+
+          // Show user marker
+          showPersistentUserMarker(lat, lng);
+
+          // Hide manual input section
+          manualInputSection.classList.remove("visible");
+
+          // Clear input fields
+          manualLat.value = "";
+          manualLng.value = "";
+
+          // Recalculate distance if a target is already selected
+          if (currentTargetCoords) {
+            var newDistKm = calculateDistance(
+              userStartPosition,
+              currentTargetCoords
+            );
+            var newTimeMin = estimateTimeMinutes(newDistKm);
+            questDistance.textContent = formatDistance(newDistKm);
+            questTime.textContent = formatTime(newTimeMin);
+          }
+        }
+
+        // --- Locate event listeners ---
+        locateBtn.addEventListener("click", locateUser);
+
+        manualToggleBtn.addEventListener("click", function () {
+          var isVisible = manualInputSection.classList.contains("visible");
+          if (isVisible) {
+            manualInputSection.classList.remove("visible");
+          } else {
+            manualInputSection.classList.add("visible");
+          }
+        });
+
+        manualApplyBtn.addEventListener("click", applyManualCoords);
+
+        manualCancelBtn.addEventListener("click", function () {
+          manualInputSection.classList.remove("visible");
+          manualLat.value = "";
+          manualLng.value = "";
+        });
+        var style = document.createElement("style");
+        style.textContent =
+          ".custom-popup .leaflet-popup-content-wrapper {" +
+          "  background: linear-gradient(180deg, #fef7e8, #f5e6c8);" +
+          "  border-radius: 10px;" +
+          "  border: 1px solid #daa520;" +
+          "  box-shadow: 0 4px 16px rgba(0,0,0,0.2);" +
+          "  padding: 2px;" +
+          "  font-family: 'Georgia', serif;" +
+          "}" +
+          ".custom-popup .leaflet-popup-tip {" +
+          "  background: #f5e6c8;" +
+          "  border: 1px solid #daa520;" +
+          "}" +
+          ".custom-popup .leaflet-popup-close-button {" +
+          "  color: #8b6914 !important;" +
+          "  font-size: 16px !important;" +
+          "  top: 6px !important;" +
+          "  right: 6px !important;" +
+          "}" +
+          ".leaflet-control-zoom a {" +
+          "  background: #fef7e8 !important;" +
+          "  color: #3d2b1f !important;" +
+          "  border-color: #daa520 !important;" +
+          "}" +
+          ".leaflet-control-zoom a:hover {" +
+          "  background: #f5e6c8 !important;" +
+          "}" +
+          ".leaflet-control-attribution {" +
+          "  background: rgba(254, 247, 232, 0.85) !important;" +
+          "  color: #7a5e3e !important;" +
+          "  font-size: 10px !important;" +
+          "}" +
+          ".leaflet-control-attribution a {" +
+          "  color: #8b6914 !important;" +
+          "}" +
+          ".target-glow {" +
+          "  animation: pulseGlow 2s infinite;" +
+          "}" +
+          "@keyframes pulseGlow {" +
+          "  0% { opacity: 0.3; }" +
+          "  50% { opacity: 0.6; }" +
+          "  100% { opacity: 0.3; }" +
+          "}";
+        document.head.appendChild(style);
+      })();
+    </script>
+  </body>
+</html>

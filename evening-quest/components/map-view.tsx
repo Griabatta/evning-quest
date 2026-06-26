@@ -40,6 +40,7 @@ import {
 import { QuestCompletion } from "./quest-completion";
 import { toast } from "sonner";
 import { useGeolocation } from "@/hooks/use-geolocation";
+import { saveQuestToStorage } from "@/lib/storage";
 import type { SerializableBadge } from "@/lib/badges";
 
 const MapInner = dynamic(() => import("./map-inner"), {
@@ -223,20 +224,28 @@ export function MapView() {
 
       const before = badgesBeforeRef.current;
       const path = travelledPath;
+      const questData = {
+        questName,
+        distanceKm,
+        elapsedSeconds,
+        fromLat: startPosition[0],
+        fromLng: startPosition[1],
+        toLat: targetCoordsRef.current[0],
+        toLng: targetCoordsRef.current[1],
+        travelledPath: path,
+      };
+
+      const localQuest = {
+        id: crypto.randomUUID(),
+        ...questData,
+        completedAt: new Date().toISOString(),
+      };
+      saveQuestToStorage(localQuest);
 
       fetch("/api/quest-history", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          questName,
-          distanceKm,
-          elapsedSeconds,
-          fromLat: startPosition[0],
-          fromLng: startPosition[1],
-          toLat: targetCoordsRef.current[0],
-          toLng: targetCoordsRef.current[1],
-          travelledPath: path,
-        }),
+        body: JSON.stringify(questData),
       })
         .then(() => {
           fetch("/api/badges")

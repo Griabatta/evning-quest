@@ -1,19 +1,26 @@
-import { isDatabaseAvailable } from "@/lib/db";
-import { getQuestHistoryList } from "@/lib/models";
-import { mockQuestHistory } from "@/lib/mock-data";
+"use client";
+
+import { useSyncExternalStore } from "react";
+import { getQuestHistoryFromStorage } from "@/lib/storage";
 import { HistoryView } from "@/components/history-view";
+import type { QuestHistory } from "@/lib/models";
 
-export default async function HistoryPage() {
-  const dbAvailable = await isDatabaseAvailable();
-  let quests = mockQuestHistory;
+function subscribeToStorage(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
 
-  if (dbAvailable) {
-    try {
-      quests = await getQuestHistoryList();
-    } catch (error) {
-      console.error("Ошибка получения истории квестов:", error);
-    }
-  }
+function getServerSnapshot(): QuestHistory[] {
+  return [];
+}
+
+export default function HistoryPage() {
+  const quests = useSyncExternalStore(
+    subscribeToStorage,
+    getQuestHistoryFromStorage,
+    getServerSnapshot
+  );
 
   return <HistoryView quests={quests} />;
 }
